@@ -2,32 +2,42 @@
 
 #let data = json("data.json")
 #let (problems,) = data
-#let time = (
-  start: datetime(
-    year: data.date.start.at(0),
-    month: data.date.start.at(1),
-    day: data.date.start.at(2),
-    hour: data.date.start.at(3),
-    minute: data.date.start.at(4),
-    second: data.date.start.at(5),
-  ),
-  end: datetime(
-    year: data.date.end.at(0),
-    month: data.date.end.at(1),
-    day: data.date.end.at(2),
-    hour: data.date.end.at(3),
-    minute: data.date.end.at(4),
-    second: data.date.end.at(5),
-  ),
-)
+#let time = if data.date != none {
+  (
+    start: datetime(
+      year: data.date.start.at(0),
+      month: data.date.start.at(1),
+      day: data.date.start.at(2),
+      hour: data.date.start.at(3),
+      minute: data.date.start.at(4),
+      second: data.date.start.at(5),
+    ),
+    end: datetime(
+      year: data.date.end.at(0),
+      month: data.date.end.at(1),
+      day: data.date.end.at(2),
+      hour: data.date.end.at(3),
+      minute: data.date.end.at(4),
+      second: data.date.end.at(5),
+    ),
+  )
+} else {
+  none
+}
 
 #import "@preview/oxifmt:1.0.0": strfmt
 
 #let cjk-align-mark = box(width: 0pt, hide[兔])
 
 #set document(title: data.title)
-#set page(paper: "a4", margin: (left: 2.5cm, right: 2.5cm, top: 2.5cm, bottom: 2.5cm))
-#set text(lang: "zh", font: ("Latin Modern Roman 12", "SimSun"), size: 12pt)
+#set page(paper: "a4", margin: (left: 2.5cm, right: 2.5cm, top: 2.5cm, bottom: 2.5cm), fill: rgb("#121314"))
+#set text(
+  lang: "zh",
+  font: ("Latin Modern Roman 12", "SimSun"),
+  size: 12pt,
+  fill: rgb("#ffffff"),
+  stroke: 0.15pt + rgb("#ffffff"),
+)
 #set par(first-line-indent: (amount: 2em, all: true), spacing: 0.7em, leading: 0.7em)
 
 // From <https://guide.typst.dev/FAQ/fix-enum-list>
@@ -133,17 +143,20 @@
   )
 }
 
-#set raw(tab-size: 4)
+#let in-raw = state("in-raw", false)
+#set raw(tab-size: 4, theme: "./tuackCodeTheme.tmTheme")
 #show strong: st => {
-  set text(font: ("Latin Modern Roman 12", "SimHei"))
-  show regex("\p{sc=Hani}+"): s => {
-    underline(s, offset: 3pt, stroke: (
-      cap: "round",
-      thickness: 0.1em,
-      dash: (array: (0em, 1em), phase: 0.5em),
-    ))
+  if in-raw.get() { st } else {
+    set text(font: ("Latin Modern Roman 12", "SimHei"))
+    show regex("\p{sc=Hani}+"): s => {
+      underline(s, offset: 3pt, stroke: (
+        cap: "round",
+        thickness: 0.15em,
+        dash: (array: (0em, 1em), phase: 0.5em),
+      ))
+    }
+    st
   }
-  st
 }
 #show heading.where(level: 1): it => {
   set text(size: 18pt, weight: "regular", font: ("Latin Modern Roman 17", "SimHei"))
@@ -155,54 +168,65 @@
   set heading(bookmarked: true)
   pad(left: 1.5em, top: 1em, bottom: .5em, [【] + it.body + [】])
 }
-#show emph: it => text(font: "Latin Modern Roman", style: "italic", weight: "bold", it.body)
-#show raw.where(block: false): it => text(font: ("Consolas", "SimSun"), size: 12pt, it)
-#show raw.where(block: true): it => {
-  set text(font: ("Consolas", "SimSun"), size: 12pt)
-  set par(leading: 0pt, spacing: 0pt)
-  set block(above: 10pt, below: 10pt)
-  show raw.line: jt => {
-    let stroke = (
-      left: 0.4pt + rgb("#0000ff"),
-      right: 0.4pt + rgb("#0000ff"),
-    )
-    let inset = (
-      top: 8.5pt / 2,
-      bottom: 8.5pt / 2,
-      left: 3pt,
-      right: 3pt,
-    )
-    if jt.number == 1 {
-      stroke.top = 0.4pt + rgb("#0000ff")
-      inset.top = 6pt
-    }
-    if jt.number == jt.count {
-      stroke.bottom = 0.4pt + rgb("#0000ff")
-      inset.bottom = 9pt
-    }
-    context (
-      box(move(
-        dx: 3pt + 6pt,
-        box(
-          box(
-            grid(
-              columns: (0pt, 0pt, 100% - 6pt),
-              align: (bottom, bottom, bottom),
-              move(
-                dx: -9pt - measure([#jt.number]).width,
-                text(fill: rgb("#808080"), size: 10pt, [#jt.number]),
-              ),
-              cjk-align-mark,
-              jt.body,
-            ),
+#show heading.where(level: 3): it => {
+  set text(size: 12pt, weight: "regular", font: ("Latin Modern Roman 12", "SimHei"))
+  set heading(bookmarked: true)
+  pad(left: 2em, bottom: .5em, it.body)
+}
+
+#show emph: it => {
+  if in-raw.get() { it } else {
+    set text(font: "Latin Modern Roman", weight: "bold")
+    it
+  }
+}
+#show link: set text(fill: rgb("#ed028c"), stroke: 0.15pt + rgb("#ed028c"))
+#show raw: it => {
+  in-raw.update(true)
+  let mono-font = ("Consolas", "SimSun")
+  set text(font: mono-font, size: 12pt, stroke: none)
+  show strong: it => text(it.body, weight: "medium")
+  if not it.block { it } else {
+    let border = 0.4pt + rgb("#7777ff")
+    show raw.line: jt => {
+      block(
+        place(
+          dx: -9pt - measure([#jt.number]).width,
+          text(fill: rgb("#808080"), size: 10pt, [#jt.number]) + cjk-align-mark,
+        )
+          + par(
+            leading: 0.65em,
+            spacing: 0em,
+            first-line-indent: 0em,
+            hanging-indent: 1.5em,
+            cjk-align-mark + jt,
           ),
-          stroke: stroke,
-          inset: inset,
-        ),
-      ))
+      )
+    }
+    block(
+      inset: (left: 9pt),
+      block(
+        width: 100% + 3pt,
+        stroke: (x: border),
+        inset: (x: 3pt, top: 6pt, bottom: 9pt),
+        place(
+          dx: -3pt,
+          dy: -6pt,
+          line(stroke: border, length: 100% + 3pt * 2),
+        )
+          + {
+            set par(spacing: 0pt)
+            it
+          }
+          + place(
+            dx: -3pt,
+            dy: 9pt,
+            line(stroke: border, length: 100% + 3pt * 2),
+          ),
+      ),
     )
   }
-  block(it)
+  in-raw.update(false)
 }
 
 #show figure: it => {
@@ -210,9 +234,9 @@
 }
 #set figure(numbering: none)
 
-#show math.equation: set text(font: "Latin Modern Math")
+#show math.equation: set text(font: ("Tuack-NG Math Symbols", "Latin Modern Math"))
 
-#set table(stroke: 0.3pt, inset: (top: 4.5pt, bottom: 4.5pt))
+#set table(stroke: 0.3pt + white, inset: (top: 4.5pt, bottom: 4.5pt))
 
 #align(center)[
   #if data.title != "" {
@@ -257,49 +281,6 @@
   }
 ]
 
-#figure(table(
-  columns: (
-    if problems.len() >= 4 { 22% } else { 1fr },
-    ..for _ in range(0, problems.len()) { (1fr,) },
-  ),
-  align: left + bottom,
-  [题目名称],
-  ..for i in problems { (i.title,) },
-  [题目类型],
-  ..for i in problems { (i.type,) },
-  ..if data.noi_style {
-    (
-      [目录],
-      ..for i in problems { (raw(i.dir),) },
-      [可执行文件名],
-      ..for i in problems { (raw(i.exec),) },
-    )
-  },
-  ..if data.file_io {
-    (
-      [输入文件名],
-      ..for i in problems { (raw(i.input),) },
-      [输出文件名],
-      ..for i in problems { (raw(i.output),) },
-    )
-  },
-  [每个测试点时限],
-  ..for i in problems { (i.time_limit,) },
-  [内存限制],
-  ..for i in problems { (i.memory_limit,) },
-  if data.noi_style { [测试点数目] } else { [子任务数目] },
-  ..for i in problems { (i.testcase,) },
-  ..if data.noi_style {
-    (
-      [测试点是否等分 ],
-      ..for i in problems { (i.point_equal,) },
-    )
-  },
-  ..if data.use_pretest {
-    ([预测试点数目], ..for i in problems { (i.pretestcase,) })
-  },
-))
-
 #let calc_language_name_content(c) = {
   let w = 36pt
   if measure(c).width <= w {
@@ -307,25 +288,89 @@
   } else { c }
 }
 
-#if data.noi_style {
+#let render-meta-table(chunk) = {
+  figure(table(
+    columns: (
+      if chunk.len() >= 4 { 22% } else { 1fr },
+      ..for _ in range(0, chunk.len()) { (1fr,) },
+    ),
+    align: left + bottom,
+    [题目名称],
+    ..for i in chunk { (i.title,) },
+    [题目类型],
+    ..for i in chunk { (i.type,) },
+    ..if data.noi_style {
+      (
+        [目录],
+        ..for i in chunk { (raw(i.dir),) },
+        [可执行文件名],
+        ..for i in chunk { (raw(i.exec),) },
+      )
+    },
+    ..if data.file_io {
+      (
+        [输入文件名],
+        ..for i in chunk { (raw(i.input),) },
+        [输出文件名],
+        ..for i in chunk { (raw(i.output),) },
+      )
+    },
+    [每个测试点时限],
+    ..for i in chunk { (i.time_limit,) },
+    [内存限制],
+    ..for i in chunk { (i.memory_limit,) },
+    if data.noi_style { [测试点数目] } else { [子任务数目] },
+    ..for i in chunk { (i.testcase,) },
+    ..if data.noi_style {
+      (
+        [测试点是否等分 ],
+        ..for i in chunk { (i.point_equal,) },
+      )
+    },
+    ..if data.use_pretest {
+      ([预测试点数目], ..for i in chunk { (i.pretestcase,) })
+    },
+  ))
+}
+
+#let render-submit-filename-table(chunk) = {
   [
     提交源程序文件名
     #figure(table(
       columns: (
-        if problems.len() >= 4 { 22% } else { 1fr },
-        ..for _ in range(0, problems.len()) { (1fr,) },
+        if chunk.len() >= 4 { 22% } else { 1fr },
+        ..for _ in range(0, chunk.len()) { (1fr,) },
       ),
       align: left + bottom,
       ..for i in range(0, data.support_languages.len()) {
         (
           [对于#context calc_language_name_content(data.support_languages.at(i).name)语言],
-          ..for j in problems {
+          ..for j in chunk {
             (raw(j.submit_filename.at(i)),)
           },
         )
       }
     ))
   ]
+}
+
+#let problems-chunks = {
+  let chunks = ()
+  let i = 0
+  while i < problems.len() {
+    chunks.push(problems.slice(i, calc.min(i + 4, problems.len())))
+    i += 4
+  }
+  chunks
+}
+
+// 每四道题一个表格
+// 局限性：可能啥时候四个也超（TODO，也许哪一天可以配置）
+#for chunk in problems-chunks {
+  render-meta-table(chunk)
+  if data.noi_style {
+    render-submit-filename-table(chunk)
+  }
 }
 
 编译选项
@@ -346,9 +391,9 @@
 
 #set table(
   stroke: (x, y) => (
-    left: if x > 0 { .4pt },
-    bottom: 2pt,
-    top: if y == 0 { 2pt } else if y == 1 { 1.2pt } else { .4pt },
+    left: if x > 0 { 0.4pt + white },
+    bottom: 2pt + white,
+    top: if y == 0 { 2pt + white } else if y == 1 { 1.2pt + white } else { 0.4pt + white },
   ),
   inset: (top: 5pt, bottom: 5pt),
   align: center + horizon,
@@ -371,12 +416,12 @@
         #prob.title（#prob.name）
       ]
       #v(-4pt)
-      #line(length: 100%, stroke: 0.3pt)
+      #line(length: 100%, stroke: 0.3pt + white)
     ]
   },
   numbering: (now, total) => [#text(
     size: 10pt,
-  )[第 #(now) 页 ~~~~ 共 #link((page: total, x: 2.5cm, y: 1.5cm))[#text(fill: rgb("#0000ff"))[#(total)]] 页]],
+  )[第 #(now) 页 ~~~~ 共 #link((page: total, x: 2.5cm, y: 1.5cm))[#text(fill: rgb("#7777ff"), stroke: 0.15pt + rgb("#7777ff"))[#(total)]] 页]],
 )
 
 #for (i, p) in problems.enumerate() {
